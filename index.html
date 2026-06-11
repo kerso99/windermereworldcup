@@ -40,9 +40,30 @@
   }
   .countdown b{font-family:'Archivo Black';color:var(--amber);font-size:15px;letter-spacing:.02em}
   .countdown span{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--chalk-dim)}
+  .livebox{
+    margin:10px auto 0;max-width:420px;border:1.5px solid var(--live);border-radius:6px;
+    background:rgba(255,92,92,.08);padding:9px 14px;text-align:left;
+  }
+  .livebox .lv-tag{
+    font-size:10px;text-transform:uppercase;letter-spacing:.22em;color:var(--live);font-weight:700;
+    display:block;text-align:center;margin-bottom:5px;
+  }
+  .livebox .lv-tag::before{content:"●";margin-right:6px;animation:pulse 1.4s infinite}
+  .livebox .lv-line{
+    font-family:'Archivo Black';font-size:13.5px;letter-spacing:.02em;color:var(--chalk);
+    padding:3px 0;text-align:center;
+  }
+  .livebox .lv-line b{color:var(--amber)}
+  .livebox .lv-line .min{color:var(--live);font-size:11.5px;margin-left:7px}
   .sync{font-size:10.5px;color:var(--chalk-dim);margin-top:8px;letter-spacing:.06em}
   .sync .ok{color:#8FD49A}
   .sync .bad{color:var(--live)}
+  .copybtn{
+    margin-top:12px;border:1.5px solid var(--amber);background:transparent;color:var(--amber);
+    font-family:'Archivo Black';font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;
+    padding:9px 18px;border-radius:6px;cursor:pointer;
+  }
+  .copybtn:active{background:var(--amber);color:var(--ink)}
 
   /* tabs */
   .tabs{display:flex;gap:6px;justify-content:center;margin:16px 0 0}
@@ -111,6 +132,8 @@
   .team .name{font-family:'Archivo Black';font-size:16px;letter-spacing:.015em;text-transform:uppercase;flex:1}
   .team.loser .name{opacity:.5;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(244,242,231,.4)}
   .owner{font-size:11.5px;font-weight:700;letter-spacing:.06em;border-radius:4px;padding:3px 9px;color:#fff;white-space:nowrap}
+  .flag{width:21px;height:15px;border-radius:2px;object-fit:cover;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.3)}
+  .flag.sm{width:17px;height:12px;vertical-align:-2px;margin-right:5px;display:inline-block}
   .derby{
     margin:0 12px 12px;background:rgba(242,199,68,.12);border:1px dashed rgba(242,199,68,.55);
     color:var(--amber);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;letter-spacing:.03em;text-align:center;
@@ -140,6 +163,15 @@
   .lb .tm.out{opacity:.38;text-decoration:line-through}
   .lb .payout{font-family:'Archivo Black';color:var(--ink);background:var(--amber);border-radius:4px;padding:2px 8px;font-size:12px}
   .lb-note{font-size:11.5px;color:var(--chalk-dim);text-align:center;margin:14px 0;line-height:1.6}
+  .subtabs{display:flex;gap:6px;justify-content:center;margin:14px 0 4px}
+  .subtab{
+    border:1.5px solid var(--card-edge);background:var(--pitch-deep);color:var(--chalk);
+    font-family:'Archivo';font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;
+    padding:7px 13px;border-radius:999px;cursor:pointer;
+  }
+  .subtab.on{background:var(--chalk);color:var(--ink);border-color:var(--chalk)}
+  .lb .big{font-family:'Archivo Black';font-size:20px;color:var(--amber);min-width:34px;text-align:right}
+  .lb .tm .n{color:var(--amber);font-weight:700;margin-left:4px}
 
   footer{margin-top:40px;text-align:center;font-size:11.5px;color:var(--chalk-dim);line-height:1.7;letter-spacing:.03em}
   footer .pot{color:var(--amber);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;margin-bottom:6px}
@@ -155,15 +187,16 @@
 <header class="wrap">
   <div class="eyebrow">Family Sweepstake · World Cup 2026</div>
   <h1>Who's Up Today?</h1>
-  <div class="sub">Last team standing takes the pot · all times ET</div>
+  <div class="sub">Furthest-advancing teams split the pot · all times ET</div>
   <div class="countdown" id="countdown" hidden>
     <span>Next kickoff</span><b id="cd-val">—</b>
   </div>
+  <div class="livebox" id="liveNow" hidden></div>
   <div class="sync" id="sync">Scores: loading…</div>
   <div class="tabs">
     <button class="tab on" data-tab="matches">Matches</button>
     <button class="tab" data-tab="groups">Groups</button>
-    <button class="tab" data-tab="board">Leaderboard</button>
+    <button class="tab" data-tab="board">Leaderboards</button>
   </div>
 </header>
 
@@ -178,9 +211,10 @@
 <main class="wrap hidden" id="view-board"></main>
 
 <footer class="wrap">
-  <div class="pot">Pot · 30 / 20 / 10</div>
-  Furthest-advancing team wins: final winner takes 30, final loser 20, third-place match winner 10.<br>
+  <div class="pot">$60 pot · 1st $30 · 2nd $20 · 3rd $10</div>
+  Furthest-advancing team wins: final winner takes $30, final loser $20, third-place match winner $10.<br>
   Scores refresh automatically while matches are live. Knockout fixtures appear here as soon as they're set.
+  <div><button class="copybtn" id="copyDigest">Copy today's update for the chat</button></div>
 </footer>
 
 <script>
@@ -196,7 +230,7 @@ const OVERRIDES = {
 const PEOPLE = {
   "Lila":{c:"#8E5BD9"},"Ebba":{c:"#E2557B"},"Robi":{c:"#2F9E8F"},"Kerso":{c:"#D9772B"},
   "Nik":{c:"#3D7DD8"},"Henrik":{c:"#B98E1F"},"Zachary":{c:"#C14040"},"Trei":{c:"#56A85C"},
-  "J.N":{c:"#5E7F9E"},"Anders":{c:"#B05FB0"},"Joe":{c:"#2FA8BF"},"R.E.D":{c:"#8C6E4A"},
+  "J.N":{c:"#5E7F9E"},"Anders":{c:"#B05FB0"},"Joe":{c:"#2FA8BF"},
 };
 
 const OWNER = {
@@ -205,14 +239,33 @@ const OWNER = {
   "Brazil":"J.N","Morocco":"Zachary","Haiti":"Henrik","Scotland":"Joe",
   "USA":"Anders","Paraguay":"Lila","Australia":"Henrik","Turkey":"Nik",
   "Germany":"Lila","Curaçao":"Henrik","Ivory Coast":"Zachary","Ecuador":"Nik",
-  "Netherlands":"Kerso","Japan":"Anders","Sweden":"Nik","Tunisia":"R.E.D",
+  "Netherlands":"Kerso","Japan":"Anders","Sweden":"Nik","Tunisia":"Lila",
   "Belgium":"J.N","Egypt":"J.N","Iran":"Kerso","New Zealand":"Robi",
   "Spain":"Lila","Cape Verde":"Robi","Saudi Arabia":"Zachary","Uruguay":"Robi",
   "France":"Trei","Senegal":"Trei","Iraq":"Lila","Norway":"Henrik",
-  "Argentina":"Kerso","Algeria":"R.E.D","Austria":"Kerso","Jordan":"Joe",
-  "Portugal":"Trei","DR Congo":"J.N","Uzbekistan":"Anders","Colombia":"R.E.D",
-  "England":"R.E.D","Ghana":"Ebba","Croatia":"Anders","Panama":"Trei",
+  "Argentina":"Kerso","Algeria":"Zachary","Austria":"Kerso","Jordan":"Joe",
+  "Portugal":"Trei","DR Congo":"J.N","Uzbekistan":"Anders","Colombia":"Henrik",
+  "England":"Ebba","Ghana":"Ebba","Croatia":"Anders","Panama":"Trei",
 };
+
+const FLAG = {
+  "Mexico":"mx","South Africa":"za","South Korea":"kr","Czechia":"cz",
+  "Canada":"ca","Bosnia & Herz.":"ba","Qatar":"qa","Switzerland":"ch",
+  "Brazil":"br","Morocco":"ma","Haiti":"ht","Scotland":"gb-sct",
+  "USA":"us","Paraguay":"py","Australia":"au","Turkey":"tr",
+  "Germany":"de","Curaçao":"cw","Ivory Coast":"ci","Ecuador":"ec",
+  "Netherlands":"nl","Japan":"jp","Sweden":"se","Tunisia":"tn",
+  "Belgium":"be","Egypt":"eg","Iran":"ir","New Zealand":"nz",
+  "Spain":"es","Cape Verde":"cv","Saudi Arabia":"sa","Uruguay":"uy",
+  "France":"fr","Senegal":"sn","Iraq":"iq","Norway":"no",
+  "Argentina":"ar","Algeria":"dz","Austria":"at","Jordan":"jo",
+  "Portugal":"pt","DR Congo":"cd","Uzbekistan":"uz","Colombia":"co",
+  "England":"gb-eng","Ghana":"gh","Croatia":"hr","Panama":"pa",
+};
+function flagImg(team, sm){
+  const c = FLAG[team]; if(!c) return "";
+  return `<img class="flag${sm?" sm":""}" src="https://flagcdn.com/w40/${c}.png" alt="" loading="lazy">`;
+}
 
 const GROUPS = {
   A:["Mexico","South Africa","South Korea","Czechia"],
@@ -474,37 +527,92 @@ function teamProgress(){
 }
 const STAGE_LABEL = {1:"Group Stage",2:"Round of 32",3:"Round of 16",4:"Quarter-finals",5:"Semi-finals",6:"Third Place",7:"Final",8:"Champion"};
 
-function renderBoard(){
-  const prog = teamProgress();
-  const final = KO.find(k=>k.stage.id===7 && k.state==="post" && k.winner);
-  const third = KO.find(k=>k.stage.id===6 && k.state==="post" && k.winner);
-  const payouts = {};
-  if(final){ payouts[OWNER[final.winner]] = "30"; payouts[OWNER[final.winner===final.a?final.b:final.a]] = (payouts[OWNER[final.winner===final.a?final.b:final.a]]||"20"); }
-  if(third){ payouts[OWNER[third.winner]] = payouts[OWNER[third.winner]] || "10"; }
+let boardMode = "pot";
 
+function teamStats(){
+  const st = {};
+  for(const t of Object.keys(OWNER)) st[t] = {w:0, gf:0};
+  for(const m of M){
+    const r = resultFor(m);
+    if(!r || r.state!=="post" || r.sa===null || isNaN(r.sa)) continue;
+    st[m.a].gf += r.sa; st[m.b].gf += r.sb;
+    if(r.sa>r.sb) st[m.a].w++;
+    else if(r.sb>r.sa) st[m.b].w++;
+  }
+  for(const k of KO){
+    if(k.state!=="post") continue;
+    if(!isNaN(k.sa)) st[k.a].gf += k.sa;
+    if(!isNaN(k.sb)) st[k.b].gf += k.sb;
+    if(k.winner) st[k.winner].w++;
+  }
+  return st;
+}
+
+function renderBoard(){
   const teamsByPerson = {};
   for(const [team,p] of Object.entries(OWNER)) (teamsByPerson[p] ||= []).push(team);
-  const board = Object.keys(PEOPLE).map(p=>{
-    const ts = teamsByPerson[p];
-    const best = Math.max(...ts.map(t=>prog[t].stage));
-    const alive = ts.filter(t=>prog[t].alive).length;
-    return {p, best, alive, ts};
-  }).sort((x,y)=> y.best-x.best || y.alive-x.alive || x.p.localeCompare(y.p));
 
-  let html = `<div class="lb-note">Ranked by each entry's furthest-advancing team, then teams still alive.<br>Updates itself as results land and knockout fixtures are set.</div>`;
-  board.forEach((row,i)=>{
-    html += `<div class="lb" style="border-left-color:${PEOPLE[row.p].c}">
-      <div class="lb-top">
-        <span class="rank">${i+1}</span>
-        <span class="pname" style="color:${PEOPLE[row.p].c}">${row.p}</span>
-        ${payouts[row.p]?`<span class="payout">+${payouts[row.p]}</span>`:""}
-        <span class="stage">${STAGE_LABEL[row.best]}</span>
-      </div>
-      <div class="teams">${row.ts.map(t=>`<span class="tm${prog[t].out?" out":""}">${t}</span>`).join("")}</div>
-    </div>`;
-  });
+  const tabs = `<div class="subtabs">
+    <button class="subtab${boardMode==="pot"?" on":""}" data-bm="pot">The Pot</button>
+    <button class="subtab${boardMode==="wins"?" on":""}" data-bm="wins">Wins</button>
+    <button class="subtab${boardMode==="goals"?" on":""}" data-bm="goals">Goals</button>
+  </div>`;
+  let html = tabs;
+
+  if(boardMode==="pot"){
+    const prog = teamProgress();
+    const final = KO.find(k=>k.stage.id===7 && k.state==="post" && k.winner);
+    const third = KO.find(k=>k.stage.id===6 && k.state==="post" && k.winner);
+    const payouts = {};
+    if(final){ payouts[OWNER[final.winner]] = "$30"; payouts[OWNER[final.winner===final.a?final.b:final.a]] = (payouts[OWNER[final.winner===final.a?final.b:final.a]]||"$20"); }
+    if(third){ payouts[OWNER[third.winner]] = payouts[OWNER[third.winner]] || "$10"; }
+    const board = Object.keys(PEOPLE).map(p=>{
+      const ts = teamsByPerson[p];
+      const best = Math.max(...ts.map(t=>prog[t].stage));
+      const alive = ts.filter(t=>prog[t].alive).length;
+      return {p, best, alive, ts};
+    }).sort((x,y)=> y.best-x.best || y.alive-x.alive || x.p.localeCompare(y.p));
+    html += `<div class="lb-note">The one that pays: ranked by each entry's furthest-advancing team, then teams still alive.</div>`;
+    board.forEach((row,i)=>{
+      html += `<div class="lb" style="border-left-color:${PEOPLE[row.p].c}">
+        <div class="lb-top">
+          <span class="rank">${i+1}</span>
+          <span class="pname" style="color:${PEOPLE[row.p].c}">${row.p}</span>
+          ${payouts[row.p]?`<span class="payout">+${payouts[row.p]}</span>`:""}
+          <span class="stage">${STAGE_LABEL[row.best]}</span>
+        </div>
+        <div class="teams">${row.ts.map(t=>`<span class="tm${prog[t].out?" out":""}">${flagImg(t,true)}${t}</span>`).join("")}</div>
+      </div>`;
+    });
+  }else{
+    const st = teamStats();
+    const key = boardMode==="wins"? "w" : "gf";
+    const label = boardMode==="wins"? "win" : "goal";
+    const board = Object.keys(PEOPLE).map(p=>{
+      const ts = teamsByPerson[p];
+      const total = ts.reduce((s,t)=>s+st[t][key],0);
+      return {p, total, ts};
+    }).sort((x,y)=> y.total-x.total || x.p.localeCompare(y.p));
+    html += `<div class="lb-note">Bragging rights only — ${boardMode==="wins"?"matches won":"goals scored"} by each entry's teams. The pot still goes by furthest team.</div>`;
+    board.forEach((row,i)=>{
+      html += `<div class="lb" style="border-left-color:${PEOPLE[row.p].c}">
+        <div class="lb-top">
+          <span class="rank">${i+1}</span>
+          <span class="pname" style="color:${PEOPLE[row.p].c}">${row.p}</span>
+          <span class="big">${row.total}</span>
+          <span class="stage">${label}${row.total===1?"":"s"}</span>
+        </div>
+        <div class="teams">${row.ts.map(t=>`<span class="tm">${flagImg(t,true)}${t}<span class="n">${st[t][key]}</span></span>`).join("")}</div>
+      </div>`;
+    });
+  }
   document.getElementById("view-board").innerHTML = html;
 }
+document.getElementById("view-board").addEventListener("click", e=>{
+  const b = e.target.closest(".subtab"); if(!b) return;
+  boardMode = b.dataset.bm;
+  renderBoard();
+});
 
 function renderGroups(){
   let html = "";
@@ -513,7 +621,7 @@ function renderGroups(){
     html += `<div class="gcard"><h3>Group ${g}</h3><table>
       <tr><th style="text-align:left;padding-left:12px">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>+/−</th><th>Pts</th></tr>`;
     rows.forEach((r,i)=>{
-      html += `<tr class="${i<2?"q":""}"><td class="tname">${r.t}<span class="owner" style="background:${PEOPLE[OWNER[r.t]].c}">${OWNER[r.t]}</span></td>
+      html += `<tr class="${i<2?"q":""}"><td class="tname">${flagImg(r.t,true)}${r.t}<span class="owner" style="background:${PEOPLE[OWNER[r.t]].c}">${OWNER[r.t]}</span></td>
         <td>${r.P}</td><td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GF-r.GA>0?"+":""}${r.GF-r.GA}</td><td class="pts">${r.Pts}</td></tr>`;
     });
     html += `</table></div>`;
@@ -545,8 +653,8 @@ function matchCard(m, r, opts={}){
       ${timeHtml}
     </div>
     <div class="m-teams">
-      <div class="team${loserA?" loser":""}"><span class="score${sa===null?" dim":""}">${sa===null?"–":sa}</span><span class="name">${m.a}</span>${ownerChip(m.a)}</div>
-      <div class="team${loserB?" loser":""}"><span class="score${sb===null?" dim":""}">${sb===null?"–":sb}</span><span class="name">${m.b}</span>${ownerChip(m.b)}</div>
+      <div class="team${loserA?" loser":""}"><span class="score${sa===null?" dim":""}">${sa===null?"–":sa}</span>${flagImg(m.a)}<span class="name">${m.a}</span>${ownerChip(m.a)}</div>
+      <div class="team${loserB?" loser":""}"><span class="score${sb===null?" dim":""}">${sb===null?"–":sb}</span>${flagImg(m.b)}<span class="name">${m.b}</span>${ownerChip(m.b)}</div>
     </div>
     ${sameOwner?`<div class="derby">House derby — ${OWNER[m.a]} can't lose this one</div>`:""}
   </article>`;
@@ -589,7 +697,25 @@ function renderMatches(){
   document.getElementById("empty").style.display = shown? "none":"block";
 }
 
-function renderAll(){ renderMatches(); renderGroups(); renderBoard(); }
+function renderLiveNow(){
+  const box = document.getElementById("liveNow");
+  const lines = [];
+  for(const m of M){
+    const r = resultFor(m);
+    if(r && r.state==="in"){
+      lines.push(`<div class="lv-line">${m.a} (${OWNER[m.a]}) <b>${isNaN(r.sa)?"0":r.sa}–${isNaN(r.sb)?"0":r.sb}</b> ${m.b} (${OWNER[m.b]})<span class="min">${r.clock||""}</span></div>`);
+    }
+  }
+  for(const k of KO){
+    if(k.state==="in"){
+      lines.push(`<div class="lv-line">${k.stage.short}: ${k.a} (${OWNER[k.a]}) <b>${isNaN(k.sa)?"0":k.sa}–${isNaN(k.sb)?"0":k.sb}</b> ${k.b} (${OWNER[k.b]})<span class="min">${k.clock||""}</span></div>`);
+    }
+  }
+  box.hidden = lines.length===0;
+  if(lines.length) box.innerHTML = `<span class="lv-tag">Currently playing</span>`+lines.join("");
+}
+
+function renderAll(){ renderMatches(); renderGroups(); renderBoard(); renderLiveNow(); }
 
 /* ---------- chips, tabs, countdown ---------- */
 function buildChips(){
@@ -634,6 +760,62 @@ function tickCountdown(){
   const d = Math.floor(h/24);
   val.textContent = (d>0? d+"d "+(h%24)+"h " : (h>0? h+"h ":"")+mi+"m "+s+"s") + " · " + upcoming.label;
 }
+
+/* ---------- daily digest for the text chain ---------- */
+const SITE_URL = "https://kerso99.github.io/windermereworldcup/";
+function prevDayKey(key){
+  const d = new Date(key+"T12:00"); d.setDate(d.getDate()-1);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function digestLineFixture(m){
+  const derby = OWNER[m.a]===OWNER[m.b] ? " — "+OWNER[m.a]+" derby!" : "";
+  const tm = m.t==="Midnight" ? "Midnight" : m.t+" ET";
+  return tm+" — "+m.a+" ("+OWNER[m.a]+") v "+m.b+" ("+OWNER[m.b]+")"+derby;
+}
+function digestLineResult(m,r){
+  return m.a+" ("+OWNER[m.a]+") "+r.sa+"–"+r.sb+" "+m.b+" ("+OWNER[m.b]+")";
+}
+function buildDigest(){
+  const today = etDateKey();
+  const yest = prevDayKey(today);
+  const dayName = DAY_NAMES[today] || new Date(today+"T12:00").toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"});
+  let out = "⚽ WORLD CUP SWEEP — "+dayName+"\n";
+
+  /* yesterday's finals (group + KO) */
+  const yRes = [];
+  for(const m of M.filter(x=>x.day===yest)){
+    const r = resultFor(m);
+    if(r && r.state==="post" && r.sa!==null && !isNaN(r.sa)) yRes.push(digestLineResult(m,r));
+  }
+  for(const k of KO.filter(x=>x.etKey===yest && x.state==="post")){
+    let line = digestLineResult({a:k.a,b:k.b},k);
+    if(k.winner) line += " — "+k.winner+" ("+OWNER[k.winner]+") through";
+    yRes.push(line);
+  }
+  if(yRes.length) out += "\nYesterday:\n"+yRes.map(l=>"• "+l).join("\n")+"\n";
+
+  /* today's fixtures (group + KO) */
+  const tFix = [];
+  for(const m of M.filter(x=>x.day===today)) tFix.push(digestLineFixture(m));
+  for(const k of KO.filter(x=>x.etKey===today)){
+    tFix.push(k.timeLabel+" — "+k.stage.short+": "+k.a+" ("+OWNER[k.a]+") v "+k.b+" ("+OWNER[k.b]+")");
+  }
+  out += tFix.length ? "\nToday:\n"+tFix.map(l=>"• "+l).join("\n") : "\nNo matches today — rest day.";
+  out += "\n\n"+SITE_URL;
+  return out;
+}
+document.getElementById("copyDigest").addEventListener("click", async ()=>{
+  const btn = document.getElementById("copyDigest");
+  const text = buildDigest();
+  try{
+    await navigator.clipboard.writeText(text);
+    btn.textContent = "Copied — paste it in the chat";
+  }catch(e){
+    /* clipboard blocked: show it for manual copy */
+    prompt("Copy this:", text);
+  }
+  setTimeout(()=>{btn.textContent="Copy today's update for the chat"}, 2500);
+});
 
 /* ---------- boot ---------- */
 buildChips();
