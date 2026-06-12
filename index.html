@@ -554,13 +554,13 @@ function renderBoard(){
 
   const tabs = `<div class="subtabs">
     <button class="subtab${boardMode==="pot"?" on":""}" data-bm="pot">The Pot</button>
-    <button class="subtab${boardMode==="wins"?" on":""}" data-bm="wins">Wins</button>
     <button class="subtab${boardMode==="goals"?" on":""}" data-bm="goals">Goals</button>
   </div>`;
   let html = tabs;
 
   if(boardMode==="pot"){
     const prog = teamProgress();
+    const st = teamStats();
     const final = KO.find(k=>k.stage.id===7 && k.state==="post" && k.winner);
     const third = KO.find(k=>k.stage.id===6 && k.state==="post" && k.winner);
     const payouts = {};
@@ -570,39 +570,39 @@ function renderBoard(){
       const ts = teamsByPerson[p];
       const best = Math.max(...ts.map(t=>prog[t].stage));
       const alive = ts.filter(t=>prog[t].alive).length;
-      return {p, best, alive, ts};
-    }).sort((x,y)=> y.best-x.best || y.alive-x.alive || x.p.localeCompare(y.p));
-    html += `<div class="lb-note">The one that pays: ranked by each entry's furthest-advancing team, then teams still alive.</div>`;
+      const wins = ts.reduce((s,t)=>s+st[t].w,0);
+      return {p, best, alive, wins, ts};
+    }).sort((x,y)=> y.best-x.best || y.alive-x.alive || y.wins-x.wins || x.p.localeCompare(y.p));
+    html += `<div class="lb-note">The money board — 1st place: wins the final ($30) · 2nd: loses the final ($20) · 3rd: wins the third-place match ($10).<br>Until then, ranked by furthest-advancing team, teams alive, then match wins.</div>`;
     board.forEach((row,i)=>{
       html += `<div class="lb" style="border-left-color:${PEOPLE[row.p].c}">
         <div class="lb-top">
           <span class="rank">${i+1}</span>
           <span class="pname" style="color:${PEOPLE[row.p].c}">${row.p}</span>
           ${payouts[row.p]?`<span class="payout">+${payouts[row.p]}</span>`:""}
-          <span class="stage">${STAGE_LABEL[row.best]}</span>
+          <span class="big">${row.wins}</span>
+          <span class="stage">win${row.wins===1?"":"s"} · ${STAGE_LABEL[row.best]}</span>
         </div>
-        <div class="teams">${row.ts.map(t=>`<span class="tm${prog[t].out?" out":""}">${flagImg(t,true)}${t}</span>`).join("")}</div>
+        <div class="teams">${row.ts.map(t=>`<span class="tm${prog[t].out?" out":""}">${flagImg(t,true)}${t}<span class="n">${st[t].w}</span></span>`).join("")}</div>
       </div>`;
     });
   }else{
     const st = teamStats();
-    const key = boardMode==="wins"? "w" : "gf";
-    const label = boardMode==="wins"? "win" : "goal";
     const board = Object.keys(PEOPLE).map(p=>{
       const ts = teamsByPerson[p];
-      const total = ts.reduce((s,t)=>s+st[t][key],0);
+      const total = ts.reduce((s,t)=>s+st[t].gf,0);
       return {p, total, ts};
     }).sort((x,y)=> y.total-x.total || x.p.localeCompare(y.p));
-    html += `<div class="lb-note">Bragging rights only — ${boardMode==="wins"?"matches won":"goals scored"} by each entry's teams. The pot still goes by furthest team.</div>`;
+    html += `<div class="lb-note">Bragging rights only — goals scored by each entry's teams. The pot still goes by the money board.</div>`;
     board.forEach((row,i)=>{
       html += `<div class="lb" style="border-left-color:${PEOPLE[row.p].c}">
         <div class="lb-top">
           <span class="rank">${i+1}</span>
           <span class="pname" style="color:${PEOPLE[row.p].c}">${row.p}</span>
           <span class="big">${row.total}</span>
-          <span class="stage">${label}${row.total===1?"":"s"}</span>
+          <span class="stage">goal${row.total===1?"":"s"}</span>
         </div>
-        <div class="teams">${row.ts.map(t=>`<span class="tm">${flagImg(t,true)}${t}<span class="n">${st[t][key]}</span></span>`).join("")}</div>
+        <div class="teams">${row.ts.map(t=>`<span class="tm">${flagImg(t,true)}${t}<span class="n">${st[t].gf}</span></span>`).join("")}</div>
       </div>`;
     });
   }
@@ -763,23 +763,41 @@ function tickCountdown(){
 
 /* ---------- daily digest for the text chain ---------- */
 const SITE_URL = "https://kerso99.github.io/windermereworldcup/";
+function flagEmoji(team){
+  const c = FLAG[team]; if(!c) return "";
+  if(c==="gb-eng") return "🏴󠁧󠁢󠁥󠁮󠁧󠁿";
+  if(c==="gb-sct") return "🏴󠁧󠁢󠁳󠁣󠁴󠁿";
+  return c.toUpperCase().replace(/./g, ch=>String.fromCodePoint(127397+ch.charCodeAt(0)));
+}
 function prevDayKey(key){
   const d = new Date(key+"T12:00"); d.setDate(d.getDate()-1);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
-function digestLineFixture(m){
-  const derby = OWNER[m.a]===OWNER[m.b] ? " — "+OWNER[m.a]+" derby!" : "";
+function digestLineFixture(m, stageTag){
+  const derby = OWNER[m.a]===OWNER[m.b] ? " 🔥 "+OWNER[m.a].toUpperCase()+" DERBY!" : "";
   const tm = m.t==="Midnight" ? "Midnight" : m.t+" ET";
-  return tm+" — "+m.a+" ("+OWNER[m.a]+") v "+m.b+" ("+OWNER[m.b]+")"+derby;
+  return tm+" — "+(stageTag? stageTag+": ":"")+flagEmoji(m.a)+" "+m.a+" ("+OWNER[m.a]+") v "+m.b+" ("+OWNER[m.b]+") "+flagEmoji(m.b)+derby;
 }
 function digestLineResult(m,r){
-  return m.a+" ("+OWNER[m.a]+") "+r.sa+"–"+r.sb+" "+m.b+" ("+OWNER[m.b]+")";
+  let tag = "";
+  if(OWNER[m.a]===OWNER[m.b]) tag = " — "+OWNER[m.a]+" wins either way 😎";
+  else if(r.sa>r.sb) tag = " — W for "+OWNER[m.a]+"! 💪";
+  else if(r.sb>r.sa) tag = " — W for "+OWNER[m.b]+"! 💪";
+  else tag = " — honors even 🤝";
+  return flagEmoji(m.a)+" "+m.a+" ("+OWNER[m.a]+") "+r.sa+"–"+r.sb+" "+m.b+" ("+OWNER[m.b]+") "+flagEmoji(m.b)+tag;
 }
+const CLOSERS = [
+  "Pot's $60. Bragging rights? Priceless. 🍿",
+  "Set your alarms and talk your trash 🗣️",
+  "Every goal moves the Goals board 📈",
+  "Scoreboard doesn't lie — check it 👇",
+  "Somebody's teams have to show up today ⏰",
+];
 function buildDigest(){
   const today = etDateKey();
   const yest = prevDayKey(today);
   const dayName = DAY_NAMES[today] || new Date(today+"T12:00").toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"});
-  let out = "⚽ WORLD CUP SWEEP — "+dayName+"\n";
+  let out = "⚽🏆 WINDERMERE WORLD CUP SWEEP\n"+dayName+"\n";
 
   /* yesterday's finals (group + KO) */
   const yRes = [];
@@ -789,19 +807,25 @@ function buildDigest(){
   }
   for(const k of KO.filter(x=>x.etKey===yest && x.state==="post")){
     let line = digestLineResult({a:k.a,b:k.b},k);
-    if(k.winner) line += " — "+k.winner+" ("+OWNER[k.winner]+") through";
+    if(k.winner) line += " — "+k.winner+" ("+OWNER[k.winner]+") marches on 🚀";
     yRes.push(line);
   }
-  if(yRes.length) out += "\nYesterday:\n"+yRes.map(l=>"• "+l).join("\n")+"\n";
+  if(yRes.length) out += "\nLast night's damage:\n"+yRes.map(l=>"• "+l).join("\n")+"\n";
 
   /* today's fixtures (group + KO) */
   const tFix = [];
   for(const m of M.filter(x=>x.day===today)) tFix.push(digestLineFixture(m));
   for(const k of KO.filter(x=>x.etKey===today)){
-    tFix.push(k.timeLabel+" — "+k.stage.short+": "+k.a+" ("+OWNER[k.a]+") v "+k.b+" ("+OWNER[k.b]+")");
+    tFix.push(digestLineFixture({a:k.a,b:k.b,t:k.timeLabel.replace(" ET","")}, k.stage.short));
   }
-  out += tFix.length ? "\nToday:\n"+tFix.map(l=>"• "+l).join("\n") : "\nNo matches today — rest day.";
-  out += "\n\n"+SITE_URL;
+  if(tFix.length){
+    out += "\nOn the menu today:\n"+tFix.map(l=>"• "+l).join("\n");
+  }else{
+    out += "\n😴 Rest day — no matches. Recover, regroup, recalculate.";
+  }
+  const dayNum = parseInt(today.slice(-2),10);
+  out += "\n\n"+CLOSERS[dayNum % CLOSERS.length];
+  out += "\n"+SITE_URL;
   return out;
 }
 document.getElementById("copyDigest").addEventListener("click", async ()=>{
